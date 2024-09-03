@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>qmc文件转换</title>
+    <title>QMC文件转换</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -29,7 +29,7 @@
             display: none;
         }
 
-        label {
+        label, #downloadZip {
             display: inline-block;
             padding: 10px 20px;
             font-size: 1em;
@@ -56,20 +56,53 @@
         .download-link:hover {
             color: #0056b3;
         }
+
+        #progressContainer {
+            margin-top: 30px;
+            width: 80%;
+            margin: 20px auto;
+            background-color: #ddd;
+            border-radius: 10px;
+            height: 30px;
+            display: none;
+        }
+
+        #progressBar {
+            height: 100%;
+            width: 0;
+            background-color: #007bff;
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
-    <h1><stronger>贫穷让我无所不能<stronger></h1>
-       <label for="openFolder">选择文件夹</label>
+    <h1><strong>贫穷让我无所不能</strong></h1>
+    <label for="openFolder">上传文件夹</label>
     <input type="file" id="openFolder" webkitdirectory multiple accept=".QMCFLAC,.QMC0,.QMC3">
-    
+    <div id="progressContainer">
+        <div id="progressBar"></div>
+    </div>
+    <button id="downloadZip" style="display:none;">下载ZIP文件</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script>
         let openFolder = document.querySelector('#openFolder');
+        let downloadZipButton = document.querySelector('#downloadZip');
+        let progressBar = document.querySelector('#progressBar');
+        let progressContainer = document.querySelector('#progressContainer');
+        let zip = new JSZip();
+
         openFolder.addEventListener('change', async e => {
+            let totalFiles = openFolder.files.length;
+            let processedFiles = 0;
+
+            progressContainer.style.display = 'block';
+
             for (const file of openFolder.files) {
                 let QMC = new Blob([file]);
                 let reader = new FileReader();
-                
+
                 reader.onload = e => {
                     let result = e.target.result;
                     let length = result.length;
@@ -79,22 +112,30 @@
                         bstr[i] = result[i].charCodeAt(0) ^ mapL(i);
                     }
 
-                    let decryptedFile = new Blob([bstr]);
-                    let element = document.createElement("a");
                     let name = file.name.replace("qmc3", "mp3")
                                         .replace("qmcflac", "flac")
                                         .replace("qmcogg", "ogg")
                                         .replace("qmc0", "mp3");
 
-                    element.download = name;
-                    element.href = window.URL.createObjectURL(decryptedFile);
-                    element.className = 'download-link';
-                    element.innerText = `Download ${name}`;
-                    document.body.appendChild(element);
+                    zip.file(name, bstr);
+
+                                       processedFiles++;
+                    let progressPercent = (processedFiles / totalFiles) * 100;
+                    progressBar.style.width = progressPercent + '%';
+                    if (processedFiles === totalFiles) {
+                        progressBar.style.width = '100%';
+                        downloadZipButton.style.display = 'inline-block';
+                    }
                 };
 
                 reader.readAsBinaryString(QMC);
             }
+        });
+
+        downloadZipButton.addEventListener('click', () => {
+            zip.generateAsync({ type: "blob" }).then(function(content) {
+                saveAs(content, "decrypted_files.zip");
+            });
         });
 
         function mapL(i) {
@@ -128,4 +169,3 @@ function getI(i) {
     </script>
 </body>
 </html>
- 
